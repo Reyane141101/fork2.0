@@ -1,4 +1,5 @@
 using Sudoku.Shared;
+using System.Collections;
 using System.Text;
 using Z3.LinqBinding;
 
