@@ -264,6 +264,10 @@ namespace Z3.LinqBinding
                                 arrRange = context.IntSort;
                                 //arrRange = context.MkBitVecSort(16);
                                 break;
+                            case TypeCode.Byte:
+                                arrDomain = context.IntSort;
+                                arrRange = context.IntSort;
+                                break;
                             case TypeCode.Int32:
                                 arrDomain = context.IntSort;
                                 arrRange = context.IntSort;
@@ -319,6 +323,7 @@ namespace Z3.LinqBinding
                         constrExp = context.MkConst(prefix, context.StringSort);
                         break;
                     case TypeCode.Int16:
+                    case TypeCode.Byte:
                     case TypeCode.Int32:
                     case TypeCode.Int64:
                     case TypeCode.DateTime:
@@ -565,6 +570,9 @@ namespace Z3.LinqBinding
                         value = val.String;
                         break;
                     case TypeCode.Int16:
+                    case TypeCode.Byte:
+                        value = ((IntNum)val).Int;
+                        break;
                     case TypeCode.Int32:
                         value = ((IntNum)val).Int;
                         break;
