@@ -18,7 +18,19 @@ using MiaPlaza.ExpressionUtils.Evaluating;
 namespace Z3.LinqBinding
 {
 
-    public enum Optimization
+	public static class ByteExtensions
+	{
+		public static bool GreaterThan(this byte left, byte right) => left > right;
+		public static bool LessThan(this byte left, byte right) => left < right;
+		public static bool GreaterThanOrEqualTo(this byte left, byte right) => left >= right;
+		public static bool LessThanOrEqualTo(this byte left, byte right) => left <= right;
+
+		public static bool Equal(this byte left, byte right) => left == right;
+
+		public static bool NotEqual(this byte left, byte right) => left != right;
+	}
+
+	public enum Optimization
     {
         Maximize,
         Minimize
@@ -323,13 +335,15 @@ namespace Z3.LinqBinding
                         constrExp = context.MkConst(prefix, context.StringSort);
                         break;
                     case TypeCode.Int16:
-                    case TypeCode.Byte:
                     case TypeCode.Int32:
                     case TypeCode.Int64:
                     case TypeCode.DateTime:
                         constrExp = context.MkIntConst(prefix);
                         break;
-                    case TypeCode.Boolean:
+                    case TypeCode.Byte:
+	                    constrExp = context.MkIntConst(prefix);
+	                    break;
+					case TypeCode.Boolean:
                         constrExp = context.MkBoolConst(prefix);
                         break;
                     case TypeCode.Single:
@@ -570,7 +584,9 @@ namespace Z3.LinqBinding
                         value = val.String;
                         break;
                     case TypeCode.Int16:
-                    case TypeCode.Byte:
+	                    value = ((IntNum)val).Int;
+	                    break;
+					case TypeCode.Byte:
                         value = ((IntNum)val).Int;
                         break;
                     case TypeCode.Int32:
@@ -857,18 +873,35 @@ namespace Z3.LinqBinding
                 case ExpressionType.ArrayIndex:
                 case ExpressionType.Index:
                     return VisitCollectionAccess(context, environment, expression, param);
-                default:
+                case ExpressionType.Convert:
+	                return VisitConvert(context, environment, (UnaryExpression)expression, param);
+
+				default:
                     throw new NotSupportedException("Unsupported expression node type encountered: " + expression.NodeType);
             }
         }
 
+        private Expr VisitConvert(Context context, Environment environment, UnaryExpression expression, ParameterExpression param)
+        {
+	        // Check if the conversion is from byte to int
+	        if (expression.Type == typeof(int) && expression.Operand.Type == typeof(byte))
+	        {
+		        // Visit the operand directly, as we want to keep it as byte
+		        return Visit(context, environment, expression.Operand, param);
+	        }
 
-        private Expr VisitConstantValue(Context context, Object val)
+	        // Default handling for other conversions
+	        return VisitUnary(context, environment, expression, param, (ctx, a) => ctx.IntToString(a)); // Example conversion, adjust as needed
+        }
+
+
+		private Expr VisitConstantValue(Context context, Object val)
         {
             switch (Type.GetTypeCode(val.GetType()))
             {
                 case TypeCode.Byte:
-                case TypeCode.Int16:
+	                return context.MkInt(Convert.ToInt64(val));
+				case TypeCode.Int16:
                 case TypeCode.Int32:
                 case TypeCode.Int64:
                     return context.MkInt(Convert.ToInt64(val));
@@ -1175,10 +1208,47 @@ namespace Z3.LinqBinding
         {
             var method = call.Method;
 
-            //
-            // Does the method have a rewriter attribute applied?
-            //
-            var rewriterAttr = (TheoremPredicateRewriterAttribute)method.GetCustomAttributes(typeof(TheoremPredicateRewriterAttribute), false).SingleOrDefault();
+            // Intercepter les méthodes d'extension ByteExtensions et réécrire l'appel en tant qu'expression binaire
+            if (method.DeclaringType == typeof(ByteExtensions))
+            {
+	            var left = call.Arguments[0];
+	            var right = call.Arguments[1];
+
+	            Expression rewrittenExpression = null;
+
+	            switch (method.Name)
+	            {
+		            case nameof(ByteExtensions.GreaterThan):
+			            rewrittenExpression = Expression.GreaterThan(left, right);
+			            break;
+		            case nameof(ByteExtensions.LessThan):
+			            rewrittenExpression = Expression.LessThan(left, right);
+			            break;
+		            case nameof(ByteExtensions.GreaterThanOrEqualTo):
+			            rewrittenExpression = Expression.GreaterThanOrEqual(left, right);
+			            break;
+		            case nameof(ByteExtensions.LessThanOrEqualTo):
+			            rewrittenExpression = Expression.LessThanOrEqual(left, right);
+			            break;
+		            case nameof(ByteExtensions.Equal):
+			            rewrittenExpression = Expression.Equal(left, right);
+			            break;
+		            case nameof(ByteExtensions.NotEqual):
+			            rewrittenExpression = Expression.NotEqual(left, right);
+			            break;
+		            default:
+			            throw new NotSupportedException($"Unsupported method call: {method.Name}");
+	            }
+
+	            // Visiter l'expression réécrite
+	            return Visit(context, environment, rewrittenExpression, param);
+            }
+
+
+			//
+			// Does the method have a rewriter attribute applied?
+			//
+			var rewriterAttr = (TheoremPredicateRewriterAttribute)method.GetCustomAttributes(typeof(TheoremPredicateRewriterAttribute), false).SingleOrDefault();
             if (rewriterAttr != null)
             {
                 //
@@ -1210,7 +1280,7 @@ namespace Z3.LinqBinding
             //
             // Filter for known Z3 operators.
             //
-            if (method.IsGenericMethod && method.GetGenericMethodDefinition() == typeof(Z3Methods).GetMethod("Distinct"))
+            if (method.IsGenericMethod && method.GetGenericMethodDefinition() == typeof(Z3Methods).GetMethod(nameof(Z3Methods.Distinct)))
             {
                 //
                 // We know the signature of the Distinct method call. Its argument is a params

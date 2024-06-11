@@ -1,11 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" Version="0.13.5" />
-    <PackageReference Include="Microsoft.Z3" Version="4.12.0" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Sudoku.Solver\.idea\.idea.Sudoku.Solver.dir\.idea\.gitignore" />
@@ -13,6 +12,7 @@
     <ProjectReference Include="..\Sudoku.Demo\Sudoku.Demo.csproj" />
     <ProjectReference Include="..\Sudoku.DLXLib\Sudoku.DLXLib.csproj" />
     <ProjectReference Include="..\Sudoku.Shared\Sudoku.Shared.csproj" />
+    <ProjectReference Include="..\Sudoku.ChocoSolver\Sudoku.ChocoSolver.csproj" />
     <ProjectReference Include="..\Sudoku.Backtracking\Sudoku.Backtracking.csproj" />
     <ProjectReference Include="..\Sudoku.LinqToZ3\Sudoku.LinqToZ3.csproj" />
     <ProjectReference Include="..\Sudoku.ParticleSwarmOptimization\Sudoku.ParticleSwarmOptimization.csproj" />
